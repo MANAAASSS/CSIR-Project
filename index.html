@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OPTIMUM SPEED SOLVER</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .container { max-width: 1000px; margin: auto; }
+        label { display: block; margin-top: 10px; }
+        input, textarea { width: 100%; padding: 8px; margin-top: 5px; }
+        button { padding: 10px 15px; margin-top: 15px; }
+        .result { margin-top: 20px; padding: 10px; border: 1px solid #ccc; }
+        .instructions { background-color: #f9f9f9; padding: 20px; border: 1px solid #ccc; margin-bottom: 20px; width: 90%; }
+        .example { color: #888; font-size: 0.9em; }
+    </style>
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+</head>
+<body>
+    <div class="container">
+        <h1>Estimation of Optimum Speed Limit using LPP Method</h1>
+
+        <div class="instructions">
+            <h2>Instructions</h2>
+            <p>Please follow these steps to use the OPTIMUM SPEED Solver:</p>
+            <ol>
+                <li>Ensure all constraint equations are in the form \( \leq 0 \). If you have a constraint in the form \( \geq 0 \), convert it to \( \leq 0 \) by multiplying both sides by \(-1\), which will reverse the inequality. For example:</li>
+                <ul>
+                    <li>Given: \( 3x + 2y \geq 5 \)</li>
+                    <li>Convert to: \( -3x - 2y \leq -5 \)</li>
+                </ul>
+                <li>If a constraint has both upper and lower limits, treat them as separate constraints. For example:</li>
+                <ul>
+                    <li>Given: \( 2 \leq x + y \leq 6 \)</li>
+                    <li>Convert to two constraints: \( x + y \geq 2 \) and \( x + y \leq 6 \)</li>
+                    <li>Then, further convert the first constraint: \( -x - y \leq -2 \)</li>
+                </ul>
+                <li>Once all inputs are provided, click "Solve" to calculate the minimum and maximum values.</li>
+            </ol>
+        </div>
+
+        <form id="lp-form">
+            <label for="num_vars">Number of variables:</label>
+            <input type="number" id="num_vars" name="num_vars" min="1" required>
+            
+            <label for="objective">Coefficients of the objective function (separated by spaces):</label>
+            <input type="text" id="objective" name="objective" required>
+            <p class="example">Example: For \(3x + 2y\), enter "3 2"</p>
+            
+            <label for="num_constraints">Number of constraints:</label>
+            <input type="number" id="num_constraints" name="num_constraints" min="1" required>
+            
+            <div id="constraints"></div>
+            
+            <button type="button" onclick="addConstraints()">Add Constraints</button>
+            <button type="submit">Solve</button>
+        </form>
+        
+        <div id="result" class="result" style="display: none;"></div>
+    </div>
+
+    <script>
+        function addConstraints() {
+            const numConstraints = document.getElementById('num_constraints').value;
+            const constraintsDiv = document.getElementById('constraints');
+            constraintsDiv.innerHTML = '';
+            for (let i = 0; i < numConstraints; i++) {
+                constraintsDiv.innerHTML += `
+                    <label for="constraint${i}">Coefficients for constraint ${i+1} (separated by spaces):</label>
+                    <input type="text" id="constraint${i}" name="constraint${i}" required>
+                    <p class="example">Example: For \(x + 2y \leq 4\), enter "1 2"</p>
+                    <label for="rhs${i}">Right-hand side value for constraint ${i+1}:</label>
+                    <input type="text" id="rhs${i}" name="rhs${i}" required>
+                    <p class="example">Example: For \(x + 2y \leq 4\), enter "4"</p>
+                `;
+            }
+            MathJax.typeset(); // Ensure MathJax re-renders the newly added examples
+        }
+
+        document.getElementById('lp-form').onsubmit = async function(event) {
+            event.preventDefault();
+
+            const formData = new FormData(event.target);
+            const data = Object.fromEntries(formData.entries());
+            const numConstraints = parseInt(data.num_constraints);
+            
+            const constraints = [];
+            const rhs = [];
+            for (let i = 0; i < numConstraints; i++) {
+                constraints.push(document.getElementById(`constraint${i}`).value);
+                rhs.push(document.getElementById(`rhs${i}`).value);
+            }
+
+            const response = await fetch('/solve', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    num_vars: data.num_vars,
+                    objective: data.objective,
+                    constraints: constraints,
+                    rhs: rhs
+                })
+            });
+
+            const result = await response.json();
+            const resultDiv = document.getElementById('result');
+            resultDiv.style.display = 'block';
+            resultDiv.innerHTML = `
+                <h2>Results:</h2>
+                <p>Minimum value: ${result.min_value}</p>
+                <p>Maximum value: ${result.max_value}</p>
+            `;
+        }
+    </script>
+</body>
+</html>
